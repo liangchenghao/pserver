@@ -2,6 +2,7 @@ package com.example.chenlian.usbsocket.service;
 
 import android.app.Service;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -17,9 +18,9 @@ public class AndroidService extends Service {
     public static final String TAG = "TAG";
     public static Boolean mainThreadFlag = true;
     public static Boolean ioThreadFlag = true;
+
     ServerSocket serverSocket = null;
     final int SERVER_PORT = 10086;
-    File testFile;
 
     @Override
     public void onCreate() {
@@ -48,7 +49,25 @@ public class AndroidService extends Service {
 
                 Socket client = serverSocket.accept();
 
-                new Thread(new ThreadReadWriterIOSocket(this, client)).start();
+                new Thread(new ThreadReadWriterIOSocket(client, new ThreadReadWriterIOSocket.ThreadRespond() {
+                    @Override
+                    public void onWebLocation(String location) {
+                        //发送广播
+                        Intent intent=new Intent();
+                        intent.putExtra("location", location);
+                        intent.setAction("usb.MA.MR");
+                        sendBroadcast(intent);
+                    }
+
+                    @Override
+                    public void onPhoneNumber(String number) {
+                        //发送广播
+                        Intent intent=new Intent();
+                        intent.putExtra("phone_number", number);
+                        intent.setAction("usb.MA.MR");
+                        sendBroadcast(intent);
+                    }
+                })).start();
             }
         } catch (IOException e1) {
             Log.v(AndroidService.TAG, Thread.currentThread().getName()
@@ -83,7 +102,7 @@ public class AndroidService extends Service {
     }
 
     @Override
-    public IBinder onBind(Intent arg0) {
+    public IBinder onBind(Intent intent) {
         Log.d(TAG, "  onBind");
         return null;
     }

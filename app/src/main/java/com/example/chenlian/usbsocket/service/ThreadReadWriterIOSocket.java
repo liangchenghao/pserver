@@ -22,11 +22,12 @@ import java.net.Socket;
  */
 public class ThreadReadWriterIOSocket implements Runnable {
     private Socket client;
-    private Context context;
 
-    ThreadReadWriterIOSocket(Context context, Socket client) {
+    private ThreadRespond respond;
+
+    ThreadReadWriterIOSocket(Socket client,ThreadRespond respond) {
         this.client = client;
-        this.context = context;
+        this.respond = respond;
     }
 
     @Override
@@ -37,7 +38,7 @@ public class ThreadReadWriterIOSocket implements Runnable {
         BufferedInputStream in;
         try {
             //PC端发来的数据msg
-            String currCMD = "";
+            String currCMD;
             out = new BufferedOutputStream(client.getOutputStream());
             in = new BufferedInputStream(client.getInputStream());
             // testSocket();// 测试socket方法
@@ -58,45 +59,23 @@ public class ThreadReadWriterIOSocket implements Runnable {
 
                     //根据命令分别处理数据
                     if (currCMD.contains("*SMS*")) {
-                        out.write("OK".getBytes());
+                        String number = currCMD.substring(5);
+                        Log.v("phone_number", "---->" + number);
+                        respond.onPhoneNumber(number);
+                        out.write("SMSOK".getBytes());
                         out.flush();
                     } else if (currCMD.contains("#location#")) {
-//                        String location = currCMD.substring(10);
-//                        Intent intent = new Intent(context, MainActivity.class);
-//                        intent.putExtra("location", location);
-//                        context.startActivity(intent);
+                        String webLocation = currCMD.substring(10);
+//                        respond.onWebLocation("http://www.qq.com");
+                        Log.v("web_location", "---->" + webLocation);
+                        respond.onWebLocation(webLocation);
+                        out.write("WEBOK".getBytes());
+                        out.flush();
+                    } else if (currCMD.equals("3")){
                         out.write("OK".getBytes());
                         out.flush();
-                    } else if (currCMD.equals("4")) {
-                        //准备接收文件数据
-                        try {
-                            out.write("service receive OK".getBytes());
-                            out.flush();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-
-                        //接收文件数据，4字节文件长度，4字节文件格式，其后是文件数据
-                        byte[] filelength = new byte[4];
-                        byte[] fileformat = new byte[4];
-                        byte[] filebytes = null;
-
-                        //从socket流中读取完整文件数据
-                        filebytes = receiveFileFromSocket(in, out, filelength,
-                                fileformat);
-
-                        // Log.v(Service139.TAG, "receive data =" + new
-                        // String(filebytes));
-                        try {
-                            /* 生成文件 */
-                            File file = FileHelper.newFile("R0013340.JPG");
-                            FileHelper.writeFile(file, filebytes, 0,
-                                    filebytes.length);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    } else if (currCMD.equals("exit")) {
-
+                    }else if (currCMD.equals("exit")) {
+                        AndroidService.ioThreadFlag = false;
                     }
                 } catch (Exception e) {
                     // try {
@@ -130,45 +109,7 @@ public class ThreadReadWriterIOSocket implements Runnable {
         }
     }
 
-    /**
-     * 功能：从socket流中读取完整文件数据
-     *
-     * InputStream in：socket输入流
-     *
-     * byte[] filelength: 流的前4个字节存储要转送的文件的字节数
-     *
-     * byte[] fileformat：流的前5-8字节存储要转送的文件的格式（如.apk）
-     *
-     * */
-    public static byte[] receiveFileFromSocket(InputStream in,
-                                               OutputStream out, byte[] filelength, byte[] fileformat) {
-        byte[] filebytes = null;// 文件数据
-        try {
-            in.read(filelength);// 读文件长度
-            int filelen = MyUtil.bytesToInt(filelength);// 文件长度从4字节byte[]转成Int
-            String strtmp = "read file length ok:" + filelen;
-            out.write(strtmp.getBytes("utf-8"));
-            out.flush();
-
-            filebytes = new byte[filelen];
-            int pos = 0;
-            int rcvLen = 0;
-            while ((rcvLen = in.read(filebytes, pos, filelen - pos)) > 0) {
-                pos += rcvLen;
-            }
-            Log.v(AndroidService.TAG, Thread.currentThread().getName()
-                    + "---->" + "read file OK:file size=" + filebytes.length);
-            out.write("read file ok".getBytes("utf-8"));
-            out.flush();
-        } catch (Exception e) {
-            Log.v(AndroidService.TAG, Thread.currentThread().getName()
-                    + "---->" + "receiveFileFromSocket error");
-            e.printStackTrace();
-        }
-        return filebytes;
-    }
-
-    /* 读取命令 */
+    // 读取命令
     public static String readCMDFromSocket(InputStream in) {
         int MAX_BUFFER_BYTES = 2048;
         String msg = "";
@@ -184,5 +125,10 @@ public class ThreadReadWriterIOSocket implements Runnable {
         }
         // Log.v(Service139.TAG, "msg=" + msg);
         return msg;
+    }
+
+    interface ThreadRespond{
+        void onWebLocation(String location);
+        void onPhoneNumber(String number);
     }
 }

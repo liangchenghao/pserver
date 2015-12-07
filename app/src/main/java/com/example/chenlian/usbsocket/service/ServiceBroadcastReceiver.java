@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.example.chenlian.usbsocket.MainActivity;
+
 /**
  * Created by chenlian on 11/30/2015.
  */
