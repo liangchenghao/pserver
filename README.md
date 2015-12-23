@@ -1,0 +1,2 @@
+# 手机自动化（Android端）
+BroadCastReceiver接收PC端的Start指令后启动一个Service作为服务端ServerSocket，在客户端链接成功后创建一条线程不断接收来自客户端的数据，在子线程中创建了一个获取数据的接口，然后在service中实时获取接口回调的数据，通过发送在Activity中动态注册的广播来完成WebView网页的实时更新
